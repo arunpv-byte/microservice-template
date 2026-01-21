@@ -1,6 +1,6 @@
 # Microservice Template - .NET 8
 
-Enterprise-grade microservice template following Clean Architecture and Vertical Slice patterns with dynamic third-party service authentication.
+Enterprise-grade microservice template following Clean Architecture and Vertical Slice patterns with dynamic third-party service authentication and comprehensive enterprise features.
 
 ## Architecture
 
@@ -10,6 +10,7 @@ Enterprise-grade microservice template following Clean Architecture and Vertical
 - **Domain-Driven Design**: Rich domain models with behavior
 - **Dynamic Authentication**: Configuration-driven third-party service auth
 - **Factory Pattern**: Centralized external service resolution
+- **Event-Driven Architecture**: Domain events with message publishing
 
 ## Technology Stack
 
@@ -21,6 +22,13 @@ Enterprise-grade microservice template following Clean Architecture and Vertical
 - xUnit, Moq, FluentAssertions (Testing)
 - SQL Server (Database)
 - Docker (Containerization)
+- **Enterprise Features**:
+  - API Versioning (Asp.Versioning)
+  - Rate Limiting (.NET 8 Built-in)
+  - Circuit Breaker (Polly)
+  - Distributed Tracing (OpenTelemetry)
+  - Caching (Redis/Memory)
+  - Message Queue (Event-driven)
 
 ## Project Structure
 
@@ -72,15 +80,15 @@ Access the API at: `http://localhost:5000`
 
 ## API Endpoints
 
-### Cardholders
+### Cardholders (v1.0)
 
-- `POST /api/cardholders` - Create a new cardholder
-- `GET /api/cardholders/{userId}` - Get cardholder by NymCard user ID
-- `PUT /api/cardholders/{userId}` - Update cardholder information
+- `POST /api/v1/cardholders` - Create a new cardholder
+- `GET /api/v1/cardholders/{userId}` - Get cardholder by NymCard user ID
+- `PUT /api/v1/cardholders/{userId}` - Update cardholder information
 
-### Cards
+### Cards (v1.0)
 
-- `GET /api/cards/{accountId}/balance` - Get card available balance
+- `GET /api/v1/cards/{accountId}/balance` - Get card available balance
 
 ### Health Check
 
@@ -90,6 +98,7 @@ Access the API at: `http://localhost:5000`
 
 - **Swagger UI**: JWT Bearer token authentication enabled
 - **Third-Party APIs**: Dynamic authentication (ApiKey, Bearer, Basic)
+- **Rate Limiting**: 100 requests per minute per endpoint
 
 ## Testing
 
@@ -125,6 +134,15 @@ Configure dynamic authentication in `appsettings.json`:
 
 ```json
 {
+  "ServiceName": "microservice-template",
+  "ServiceVersion": "1.0.0",
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=localhost;Database=MicroserviceDb;...",
+    "Redis": "localhost:6379"
+  },
+  "Caching": {
+    "Type": "Memory"
+  },
   "ThirdPartyServices": {
     "NymCard": {
       "BaseUrl": "https://api.sand.platform.nymcard.com",
@@ -156,6 +174,49 @@ Configure dynamic authentication in `appsettings.json`:
 Serilog is configured for structured logging. Adjust levels in `appsettings.json`.
 
 ## Key Features
+
+### API Versioning
+
+- URL-based versioning (`/api/v1/endpoint`)
+- Query string versioning (`?version=1.0`)
+- Header-based versioning (`X-Version: 1.0`)
+- Automatic API explorer integration
+
+### Rate Limiting
+
+- Fixed window rate limiting (100 requests/minute)
+- Token bucket limiting for strict endpoints
+- Configurable per endpoint
+- Automatic 429 responses
+
+### Circuit Breaker & Resilience
+
+- Polly-based circuit breaker pattern
+- Exponential backoff retry policy
+- Transient fault handling
+- Automatic recovery
+
+### Distributed Tracing
+
+- OpenTelemetry integration
+- ASP.NET Core instrumentation
+- HTTP client tracing
+- SQL client instrumentation
+- Jaeger exporter support
+
+### Caching
+
+- Redis distributed caching
+- In-memory caching fallback
+- Configurable cache providers
+- JSON serialization support
+
+### Event-Driven Architecture
+
+- Domain events with MediatR
+- Message publishing abstraction
+- In-memory publisher (development)
+- Ready for external message queues
 
 ### Dynamic Third-Party Authentication
 
