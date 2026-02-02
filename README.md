@@ -11,6 +11,7 @@ Enterprise-grade microservice template following Clean Architecture and Vertical
 - **Dynamic Authentication**: Configuration-driven third-party service auth
 - **Factory Pattern**: Centralized external service resolution
 - **Event-Driven Architecture**: Domain events with message publishing
+- **Structured Logging**: JSON-formatted logs with correlation IDs
 
 ## Technology Stack
 
@@ -18,7 +19,7 @@ Enterprise-grade microservice template following Clean Architecture and Vertical
 - Dapper (Data Access)
 - MediatR (CQRS)
 - FluentValidation (Validation)
-- Serilog (Logging)
+- Serilog (Structured Logging)
 - xUnit, Moq, FluentAssertions (Testing)
 - SQL Server (Database)
 - Docker (Containerization)
@@ -29,6 +30,7 @@ Enterprise-grade microservice template following Clean Architecture and Vertical
   - Distributed Tracing (OpenTelemetry)
   - Caching (Redis/Memory)
   - Message Queue (Event-driven)
+  - Structured Logging (JSON format)
 
 ## Project Structure
 
@@ -86,10 +88,6 @@ Access the API at: `http://localhost:5000`
 - `GET /api/v1/cardholders/{userId}` - Get cardholder by NymCard user ID
 - `PUT /api/v1/cardholders/{userId}` - Update cardholder information
 
-### Cards (v1.0)
-
-- `GET /api/v1/cards/{accountId}/balance` - Get card available balance
-
 ### Health Check
 
 - `GET /health` - Application health status
@@ -97,7 +95,7 @@ Access the API at: `http://localhost:5000`
 ### Authentication
 
 - **Swagger UI**: JWT Bearer token authentication enabled
-- **Third-Party APIs**: Dynamic authentication (ApiKey, Bearer, Basic)
+- **Third-Party APIs**: Dynamic authentication (ApiKey, Bearer, Basic, OAuth2)
 - **Rate Limiting**: 100 requests per minute per endpoint
 
 ## Testing
@@ -137,7 +135,7 @@ Configure dynamic authentication in `appsettings.json`:
   "ServiceName": "microservice-template",
   "ServiceVersion": "1.0.0",
   "ConnectionStrings": {
-    "DefaultConnection": "Server=localhost;Database=MicroserviceDb;...",
+    "DefaultConnection": "Server=localhost;Database=******;...",
     "Redis": "localhost:6379"
   },
   "Caching": {
@@ -159,6 +157,24 @@ Configure dynamic authentication in `appsettings.json`:
       "AuthType": "Basic",
       "Username": "<PayPalClientId>",
       "Password": "<PayPalClientSecret>"
+    },
+    "OAuth2Service": {
+      "BaseUrl": "https://api.oauth2service.com",
+      "AuthType": "oauth_client_credentials",
+      "TokenUrl": "https://auth.oauth2service.com/token",
+      "ClientId": "<OAuth2ClientId>",
+      "ClientSecret": "<OAuth2ClientSecret>",
+      "Scope": "api:read api:write"
+    },
+    "LegacyService": {
+      "BaseUrl": "https://api.legacyservice.com",
+      "AuthType": "oauth_password",
+      "TokenUrl": "https://auth.legacyservice.com/token",
+      "ClientId": "<LegacyClientId>",
+      "ClientSecret": "<LegacyClientSecret>",
+      "Username": "<ServiceUsername>",
+      "Password": "<ServicePassword>",
+      "Scope": "full_access"
     }
   }
 }
@@ -168,10 +184,47 @@ Configure dynamic authentication in `appsettings.json`:
 - `ApiKey` - Adds `X-API-Key` header
 - `Bearer` - Adds `Authorization: Bearer {token}` header
 - `Basic` - Adds `Authorization: Basic {credentials}` header
+- `oauth_client_credentials` - OAuth 2.0 Client Credentials flow
+- `oauth_password` - OAuth 2.0 Resource Owner Password flow
 
-### Logging
+### Structured Logging
 
-Serilog is configured for structured logging. Adjust levels in `appsettings.json`.
+Serilog is configured for JSON-formatted structured logging with correlation IDs. All log entries automatically include:
+- **CorrelationId**: Unique identifier for request tracking
+- **Application**: Service name
+- **Environment**: Current environment
+- **Version**: Application version
+- **MachineName**: Host machine identifier
+
+### AWS Secrets Management
+
+For production environments, sensitive data should be stored in AWS Secrets Manager or Parameter Store:
+
+**AWS Secrets Manager (JSON format):**
+```json
+{
+  "ThirdPartyServices:NymCard:ApiKey": "<NymCardApiKey>",
+  "ThirdPartyServices:Stripe:Token": "<StripeApiKey>",
+  "ThirdPartyServices:OAuth2Service:ClientSecret": "<OAuth2ClientSecret>",
+  "ConnectionStrings:DefaultConnection": "Server=prod-db;Database=MicroserviceDb;..."
+}
+```
+
+**AWS Parameter Store:**
+```
+/microservice-template/database/connection-string
+/microservice-template/nymcard/api-key
+/microservice-template/stripe/secret-key
+/microservice-template/oauth2/client-secret
+```
+
+**Environment Variables:**
+```bash
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=<access-key>
+AWS_SECRET_ACCESS_KEY=<secret-key>
+# Or use IAM roles in ECS/EKS
+```
 
 ## Key Features
 
@@ -198,11 +251,12 @@ Serilog is configured for structured logging. Adjust levels in `appsettings.json
 
 ### Distributed Tracing
 
-- OpenTelemetry integration
-- ASP.NET Core instrumentation
-- HTTP client tracing
-- SQL client instrumentation
-- Jaeger exporter support
+- OpenTelemetry integration with correlation IDs
+- ASP.NET Core, HTTP, and SQL instrumentation
+- New Relic integration via OTLP exporter
+- Jaeger exporter support for development
+- Request/response tracking across services
+- Custom spans and business metrics
 
 ### Caching
 
@@ -221,7 +275,7 @@ Serilog is configured for structured logging. Adjust levels in `appsettings.json
 ### Dynamic Third-Party Authentication
 
 - Configuration-driven authentication for external services
-- Support for multiple auth types (ApiKey, Bearer, Basic)
+- Support for multiple auth types (ApiKey, Bearer, Basic, OAuth2)
 - Factory pattern for service resolution
 - Environment-specific configurations
 - No code changes needed for new services
@@ -239,12 +293,14 @@ Serilog is configured for structured logging. Adjust levels in `appsettings.json
 - Fail-fast validation pipeline
 - Meaningful error messages
 
-### Logging
+### Structured Logging
 
-- Structured logging with Serilog
-- Request/response logging
+- JSON-formatted logs with Serilog
+- Automatic correlation ID enrichment
+- Request/response logging middleware
 - Performance tracking
-- Correlation ID support
+- Sensitive data redaction
+- Distributed tracing integration
 
 ### Health Checks
 
@@ -303,6 +359,9 @@ Serilog is configured for structured logging. Adjust levels in `appsettings.json
 
 ## Production Considerations
 
+- **AWS Secrets Management**: Use AWS Secrets Manager for API keys and connection strings
+- **IAM Roles**: Use IAM roles instead of access keys in ECS/EKS environments
+- **Parameter Store**: Use AWS Systems Manager Parameter Store for configuration values
 - Configure proper connection strings
 - Set up application secrets management for third-party API keys
 - Configure logging sinks (e.g., Application Insights)
@@ -315,6 +374,8 @@ Serilog is configured for structured logging. Adjust levels in `appsettings.json
 - Implement circuit breakers for external services
 - Monitor third-party service dependencies
 - Set up alerting for authentication failures
+- Configure structured logging aggregation
+- Set up correlation ID tracking across services
 
 ## License
 
